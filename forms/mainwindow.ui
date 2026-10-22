@@ -2848,6 +2848,7 @@
     <addaction name="action_Open_Project"/>
     <addaction name="menuOpen_Recent_Project"/>
     <addaction name="action_Reload_Project"/>
+    <addaction name="action_Reload_Map"/>
     <addaction name="action_Close_Project"/>
     <addaction name="separator"/>
     <addaction name="action_Save"/>
@@ -2961,6 +2962,14 @@
   <action name="action_Reload_Project">
    <property name="text">
     <string>Reload Project</string>
+   </property>
+  </action>
+  <action name="action_Reload_Map">
+   <property name="text">
+    <string>Reload Map</string>
+   </property>
+   <property name="shortcut">
+    <string>F5</string>
    </property>
   </action>
   <action name="action_Save">

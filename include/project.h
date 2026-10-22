@@ -79,6 +79,7 @@ public:
     // Note: This does not guarantee the map is loaded.
     Map* getMap(const QString &mapName) { return this->maps.value(mapName); }
     Map* loadMap(const QString &mapName);
+    void unloadMap(const QString &mapName);
 
     const QStringList& layoutIds() const { return this->alphabeticalLayoutIds; }
     const QStringList& layoutIdsOrdered() const { return this->orderedLayoutIds; }
@@ -91,6 +92,7 @@ public:
     // Note: This does not guarantee the layout is loaded.
     Layout* getLayout(const QString &layoutId) const { return this->mapLayouts.value(layoutId); }
     Layout* loadLayout(const QString &layoutId);
+    void unloadLayout(const QString &layoutId);
 
     const QStringList& locationNames() const { return this->mapSectionIdNames; }
     const QStringList& locationNamesOrdered() const { return this->mapSectionIdNamesSaveOrder; }

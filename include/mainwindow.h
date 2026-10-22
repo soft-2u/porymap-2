@@ -189,6 +189,7 @@ public slots:
 private slots:
     void on_action_Open_Project_triggered();
     void on_action_Reload_Project_triggered();
+    void on_action_Reload_Map_triggered();
     void on_action_Close_Project_triggered();
     void on_action_Save_Project_triggered();
     bool save(bool currentOnly = false);

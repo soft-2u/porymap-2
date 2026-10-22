@@ -348,6 +348,56 @@ Layout *Project::loadLayout(const QString &layoutId) {
     return layout;
 }
 
+// Forget the in-memory state of a single map (and, if no other loaded map is using it, its layout)
+// so that the next loadMap() call re-reads it from disk. Used to reload just one map (F5)
+// instead of reloading the entire project.
+// NOTE: Callers are responsible for resolving unsaved changes first (save or discard);
+// any edit history for the map/layout is discarded here.
+void Project::unloadMap(const QString &mapName) {
+    Map *map = this->maps.value(mapName);
+    if (!map)
+        return;
+
+    const QString layoutId = map->layoutId();
+    this->loadedMapNames.remove(mapName);
+
+    // The map's data will be re-read from disk, so its old edit history is no longer valid.
+    map->editHistory()->clear();
+    map->setClean();
+
+    if (layoutId.isEmpty())
+        return;
+
+    // Don't unload the layout if another loaded map is still using it.
+    for (const QString &otherName : this->loadedMapNames) {
+        Map *other = this->maps.value(otherName);
+        if (other && other->layoutId() == layoutId)
+            return;
+    }
+    unloadLayout(layoutId);
+}
+
+// Forget the in-memory state of a single layout so that the next loadLayout() call
+// re-reads its blockdata/border from disk, and force-reload its two tilesets so any
+// tileset changes on disk (tiles, metatiles, palettes) are picked up as well.
+void Project::unloadLayout(const QString &layoutId) {
+    Layout *layout = this->mapLayouts.value(layoutId);
+    if (!layout)
+        return;
+
+    this->loadedLayoutIds.remove(layoutId);
+
+    // The layout's blockdata will be re-read from disk, so its old edit history is no longer valid.
+    layout->editHistory.clear();
+    layout->editHistory.setClean();
+    layout->hasUnsavedDataChanges = false;
+
+    if (!layout->tileset_primary_label.isEmpty())
+        getTileset(layout->tileset_primary_label, true);
+    if (!layout->tileset_secondary_label.isEmpty())
+        getTileset(layout->tileset_secondary_label, true);
+}
+
 QSet<QString> Project::getTopLevelMapFields() const {
     QSet<QString> fields = {
         "id",

@@ -1070,6 +1070,54 @@ void MainWindow::on_action_Reload_Project_triggered() {
         openProject(this->editor->project->root);
 }
 
+// Reload only the currently-open map (or, in layout-only mode, the current layout)
+// by re-reading it and its tilesets from disk, instead of reloading the whole project.
+void MainWindow::on_action_Reload_Map_triggered() {
+    if (!isProjectOpen() || !this->editor || !this->editor->project)
+        return;
+    Project *project = this->editor->project;
+
+    if (this->editor->map) {
+        Map *map = this->editor->map;
+        const QString mapName = map->name();
+        if (map->hasUnsavedChanges()) {
+            auto reply = SaveChangesMessage::show(QString("Map '%1'").arg(mapName), this);
+            if (reply == QMessageBox::Yes) {
+                if (!save(true))
+                    return;
+            } else if (reply == QMessageBox::No) {
+                logWarn(QString("Reloading map '%1' with unsaved changes.").arg(mapName));
+            } else {
+                // Cancel (or unexpected), don't reload.
+                return;
+            }
+        }
+        project->unloadMap(mapName);
+        // Use setMap (not userSetMap): the map is already open, so userSetMap would refuse as "already set".
+        if (!setMap(mapName)) {
+            RecentErrorMessage::show(QString("There was an error reloading map '%1'.").arg(mapName), this);
+        }
+    } else if (this->editor->layout) {
+        Layout *layout = this->editor->layout;
+        const QString layoutId = layout->id;
+        if (layout->hasUnsavedChanges()) {
+            auto reply = SaveChangesMessage::show(QString("Layout '%1'").arg(layout->name), this);
+            if (reply == QMessageBox::Yes) {
+                if (!save(true))
+                    return;
+            } else if (reply == QMessageBox::No) {
+                logWarn(QString("Reloading layout '%1' with unsaved changes.").arg(layout->name));
+            } else {
+                return;
+            }
+        }
+        project->unloadLayout(layoutId);
+        if (!setLayout(layoutId)) {
+            RecentErrorMessage::show(QString("There was an error reloading layout '%1'.").arg(layout->name), this);
+        }
+    }
+}
+
 void MainWindow::on_action_Close_Project_triggered() {
     closeProject();
     porymapConfig.projectManuallyClosed = true;
