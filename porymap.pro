@@ -123,6 +123,7 @@ SOURCES += src/core/advancemapparser.cpp \
     src/ui/newmapgroupdialog.cpp \
     src/ui/noscrollcombobox.cpp \
     src/ui/noscrollspinbox.cpp \
+    src/ui/noscrollslider.cpp \
     src/ui/montabwidget.cpp \
     src/ui/encountertablemodel.cpp \
     src/ui/encountertabledelegates.cpp \
@@ -132,6 +133,7 @@ SOURCES += src/core/advancemapparser.cpp \
     src/ui/tileseteditor.cpp \
     src/ui/tileseteditormetatileselector.cpp \
     src/ui/tileseteditortileselector.cpp \
+    src/ui/tilepixeleditoritem.cpp \
     src/ui/tilemaptileselector.cpp \
     src/ui/regionmapeditor.cpp \
     src/ui/newmapdialog.cpp \
@@ -241,6 +243,7 @@ HEADERS  += include/core/advancemapparser.h \
     include/ui/newmapgroupdialog.h \
     include/ui/noscrollcombobox.h \
     include/ui/noscrollspinbox.h \
+    include/ui/noscrollslider.h \
     include/ui/noscrolltextedit.h \
     include/ui/montabwidget.h \
     include/ui/encountertablemodel.h \
@@ -252,6 +255,7 @@ HEADERS  += include/core/advancemapparser.h \
     include/ui/tileseteditor.h \
     include/ui/tileseteditormetatileselector.h \
     include/ui/tileseteditortileselector.h \
+    include/ui/tilepixeleditoritem.h \
     include/ui/tilemaptileselector.h \
     include/ui/regionmapeditor.h \
     include/ui/newmapdialog.h \

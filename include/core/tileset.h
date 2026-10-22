@@ -101,6 +101,13 @@ public:
 
     QImage tileImage(uint16_t tileId) const { return m_tiles.value(Tile::getIndexInTileset(tileId)); }
 
+    // Pixel editing for a single tile. Unlike a plain tileImage() copy, these write through to
+    // both the per-tile image list and the full tiles image, and flag the tiles image as unsaved
+    // so that saveTilesImage() actually writes it back to tilesImagePath.
+    bool setTileImage(uint16_t tileId, const QImage &tileImage);
+    bool setTilePixel(uint16_t tileId, const QPoint &pos, int colorIndex);
+    bool hasUnsavedTilesImage() const { return m_hasUnsavedTilesImage; }
+
     QSet<int> getUnusedColorIds(int paletteId, const Tileset *pairedTileset, const QSet<int> &searchColors = {}) const;
     QList<uint16_t> findMetatilesUsingColor(int paletteId, int colorId, const Tileset *pairedTileset) const;
 

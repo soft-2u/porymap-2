@@ -99,7 +99,7 @@
           <number>0</number>
          </property>
          <item>
-          <widget class="QSlider" name="slider_Red">
+          <widget class="NoScrollSlider" name="slider_Red">
            <property name="maximum">
             <number>31</number>
            </property>
@@ -112,7 +112,7 @@
           </widget>
          </item>
          <item>
-          <widget class="QSlider" name="slider_Green">
+          <widget class="NoScrollSlider" name="slider_Green">
            <property name="maximum">
             <number>31</number>
            </property>
@@ -125,7 +125,7 @@
           </widget>
          </item>
          <item>
-          <widget class="QSlider" name="slider_Blue">
+          <widget class="NoScrollSlider" name="slider_Blue">
            <property name="maximum">
             <number>31</number>
            </property>
@@ -162,7 +162,7 @@
           <number>0</number>
          </property>
          <item>
-          <widget class="QSpinBox" name="spinBox_Red">
+          <widget class="NoScrollSpinBox" name="spinBox_Red">
            <property name="maximum">
             <number>255</number>
            </property>
@@ -172,7 +172,7 @@
           </widget>
          </item>
          <item>
-          <widget class="QSpinBox" name="spinBox_Green">
+          <widget class="NoScrollSpinBox" name="spinBox_Green">
            <property name="maximum">
             <number>255</number>
            </property>
@@ -182,7 +182,7 @@
           </widget>
          </item>
          <item>
-          <widget class="QSpinBox" name="spinBox_Blue">
+          <widget class="NoScrollSpinBox" name="spinBox_Blue">
            <property name="maximum">
             <number>255</number>
            </property>
@@ -303,6 +303,18 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>NoScrollSlider</class>
+   <extends>QSlider</extends>
+   <header>noscrollslider.h</header>
+  </customwidget>
+  <customwidget>
+   <class>NoScrollSpinBox</class>
+   <extends>QSpinBox</extends>
+   <header>noscrollspinbox.h</header>
+  </customwidget>
+ </customwidgets>
  <resources>
   <include location="../resources/images.qrc"/>
  </resources>

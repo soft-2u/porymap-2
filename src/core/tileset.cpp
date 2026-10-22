@@ -9,6 +9,7 @@
 #include <QPainter>
 #include <QImage>
 #include <algorithm>
+#include <cstring>
 
 
 Tileset::Tileset(const Tileset &other)
@@ -620,6 +621,58 @@ bool Tileset::loadTilesImage(QImage *importedImage) {
     }
 
     return true;
+}
+
+bool Tileset::setTileImage(uint16_t tileId, const QImage &tileImage) {
+    const int index = Tile::getIndexInTileset(tileId);
+    if (index < 0 || index >= m_tiles.length())
+        return false;
+    if (tileImage.size() != Tile::pixelSize() || tileImage.format() != QImage::Format_Indexed8)
+        return false;
+
+    QImage newTile = tileImage;
+    // Keep the same color table as the full tiles image so the saved PNG keeps the same indices.
+    if (!m_tilesImage.isNull())
+        newTile.setColorTable(m_tilesImage.colorTable());
+
+    m_tiles[index] = newTile;
+
+    // Write the tile into the full tiles image. The tiles were cut from it in row-major order
+    // (see loadTilesImage), and it's an 8-bit indexed image, so we can copy the bytes directly.
+    // (Painting with QPainter could remap indices if the color table contains duplicate colors.)
+    if (!m_tilesImage.isNull() && m_tilesImage.format() == QImage::Format_Indexed8) {
+        const int tilesPerRow = m_tilesImage.width() / Tile::pixelWidth();
+        if (tilesPerRow > 0) {
+            const int originX = (index % tilesPerRow) * Tile::pixelWidth();
+            const int originY = (index / tilesPerRow) * Tile::pixelHeight();
+            if (originY + Tile::pixelHeight() <= m_tilesImage.height()) {
+                for (int y = 0; y < Tile::pixelHeight(); y++) {
+                    memcpy(m_tilesImage.scanLine(originY + y) + originX, newTile.constScanLine(y), Tile::pixelWidth());
+                }
+            }
+        }
+    }
+
+    m_hasUnsavedTilesImage = true;
+    return true;
+}
+
+bool Tileset::setTilePixel(uint16_t tileId, const QPoint &pos, int colorIndex) {
+    if (pos.x() < 0 || pos.x() >= Tile::pixelWidth() || pos.y() < 0 || pos.y() >= Tile::pixelHeight())
+        return false;
+    if (colorIndex < 0 || colorIndex >= Tileset::numColorsPerPalette())
+        return false;
+
+    QImage tile = tileImage(tileId);
+    if (tile.isNull() || tile.format() != QImage::Format_Indexed8)
+        return false;
+    if (tile.pixelIndex(pos) == colorIndex)
+        return true; // No change, don't flag the image as unsaved
+
+    // Note: setPixel() sets the color index for Format_Indexed8 images.
+    // (QImage::setPixelIndex only exists in Qt 6; this project still supports Qt 5.)
+    tile.setPixel(pos.x(), pos.y(), static_cast<uint>(colorIndex));
+    return setTileImage(tileId, tile);
 }
 
 bool Tileset::saveTilesImage() {

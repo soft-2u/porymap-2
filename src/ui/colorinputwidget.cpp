@@ -28,6 +28,15 @@ ColorInputWidget::ColorInputWidget(const QString &title, QWidget *parent) :
 void ColorInputWidget::init() {
     ui->setupUi(this);
 
+    // Never let the mouse wheel change a color value, even when a slider/spin box has focus.
+    // The wheel events are ignored by these widgets, so an ancestor scroll area can still scroll.
+    ui->slider_Red->setFocusedScrollingEnabled(false);
+    ui->slider_Green->setFocusedScrollingEnabled(false);
+    ui->slider_Blue->setFocusedScrollingEnabled(false);
+    ui->spinBox_Red->setFocusedScrollingEnabled(false);
+    ui->spinBox_Green->setFocusedScrollingEnabled(false);
+    ui->spinBox_Blue->setFocusedScrollingEnabled(false);
+
     // Connect color change signals
     connect(ui->slider_Red,   &QSlider::valueChanged, this, &ColorInputWidget::setRgbFromSliders);
     connect(ui->slider_Green, &QSlider::valueChanged, this, &ColorInputWidget::setRgbFromSliders);

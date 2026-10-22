@@ -11,9 +11,11 @@
 #include "tileseteditortileselector.h"
 #include "metatilelayersitem.h"
 #include "metatileimageexporter.h"
+#include "tilepixeleditoritem.h"
 
 class NoScrollComboBox;
 class Layout;
+class QToolButton;
 
 namespace Ui {
 class TilesetEditor;
@@ -47,6 +49,21 @@ public:
 
     uint16_t swapMetatileId = 0;
     bool isSwap = false;
+};
+
+// One pixel-editor stroke on a single tile (a snapshot of the tile before/after the stroke).
+class PixelEditHistoryItem {
+public:
+    PixelEditHistoryItem() {};
+    PixelEditHistoryItem(uint16_t tileId, const QImage &prevTile, const QImage &newTile) {
+        this->tileId = tileId;
+        this->prevTile = prevTile;
+        this->newTile = newTile;
+    }
+
+    uint16_t tileId = 0;
+    QImage prevTile;
+    QImage newTile;
 };
 
 class TilesetEditor : public QMainWindow
@@ -156,6 +173,18 @@ private:
     void applyMetatileSwapsToLayouts();
     void rebuildMetatilePropertiesFrame();
     void addWidgetToMetatileProperties(QWidget *w, int *row, int rowSpan);
+    void refreshTileInfo();
+    void initPixelEditor();
+    void refreshPixelEditor();
+    void refreshPixelEditorDisplay();
+    void refreshPixelPaletteSwatches();
+    void setPixelColorIndex(int colorIndex);
+    void paintPixelAt(const QPoint &pixelPos);
+    void eyedropPixelAt(const QPoint &pixelPos);
+    void finishPixelStroke();
+    void applyPixelTileImage(uint16_t tileId, const QImage &tileImage);
+    void undoPixelEdit();
+    void redoPixelEdit();
     void updateLayerTileStatus();
     void showTileStatus(const Tile &tile);
     void showTileStatus(uint16_t tileId);
@@ -164,6 +193,19 @@ private:
 
     Ui::TilesetEditor *ui;
     History<MetatileHistoryItem*> metatileHistory;
+    History<PixelEditHistoryItem*> pixelHistory;
+    // Chronological record of which history each edit belongs to (0 = metatile, 1 = pixel),
+    // so the shared Undo/Redo actions undo edits in the order they were made.
+    QList<int> editUndoOrder;
+    QList<int> editRedoOrder;
+    TilePixelEditorItem *pixelEditorItem = nullptr;
+    QList<QToolButton*> pixelPaletteButtons;
+    uint16_t pixelEditTileId = 0;
+    bool hasPixelEditTile = false;
+    int pixelColorIndex = 1;
+    bool pixelStrokeActive = false;
+    QImage pixelStrokePrevTile;
+    uint16_t pixelStrokeTileId = 0;
     TilesetEditorMetatileSelector *metatileSelector = nullptr;
     TilesetEditorTileSelector *tileSelector = nullptr;
     MetatileLayersItem *metatileLayersItem = nullptr;

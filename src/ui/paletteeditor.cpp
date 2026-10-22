@@ -52,6 +52,8 @@ PaletteEditor::PaletteEditor(Project *project, Tileset *primaryTileset, Tileset 
     connect(filter, &ActiveWindowFilter::activated, this, &PaletteEditor::invalidateCache);
     this->installEventFilter(filter);
 
+    // Never let the mouse wheel change the palette id, even when this spin box has focus.
+    this->ui->spinBox_PaletteId->setFocusedScrollingEnabled(false);
     this->ui->spinBox_PaletteId->setRange(0, Project::getNumPalettesTotal() - 1);
     this->ui->spinBox_PaletteId->setValue(paletteId);
     connect(this->ui->spinBox_PaletteId, QOverload<int>::of(&QSpinBox::valueChanged), this, &PaletteEditor::refreshPaletteId);
