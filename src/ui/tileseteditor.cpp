@@ -15,6 +15,10 @@
 #include <QDialogButtonBox>
 #include <QCloseEvent>
 #include <QImageReader>
+#include <QToolButton>
+#include <QFontDatabase>
+#include <QDir>
+#include <QFileInfo>
 
 TilesetEditor::TilesetEditor(Project *project, Layout *layout, QWidget *parent) :
     QMainWindow(parent),
@@ -72,6 +76,7 @@ TilesetEditor::TilesetEditor(Project *project, Layout *layout, QWidget *parent) 
     initMetatileLayersItem();
     initTileSelector();
     initSelectedTileItem();
+    initPixelEditor();
     initShortcuts();
     setMetatileLayerOrientation(porymapConfig.tilesetEditorLayerOrientation);
     this->metatileSelector->select(0);
@@ -87,6 +92,7 @@ TilesetEditor::~TilesetEditor()
     delete copiedMetatile;
     delete metatileImageExportSettings;
     this->metatileHistory.clear();
+    this->pixelHistory.clear();
 }
 
 void TilesetEditor::update(Layout *layout, QString primaryTilesetLabel, QString secondaryTilesetLabel) {
@@ -290,6 +296,7 @@ void TilesetEditor::rebuildMetatilePropertiesFrame() {
     addWidgetToMetatileProperties(ui->frame_TerrainType,        &row, 2);
     addWidgetToMetatileProperties(ui->frame_RawAttributesValue, &row, 2);
     addWidgetToMetatileProperties(ui->frame_MetatileLabel,      &row, 2);
+    addWidgetToMetatileProperties(ui->frame_TileInfo,           &row, 2);
 }
 
 void TilesetEditor::addWidgetToMetatileProperties(QWidget *w, int *row, int rowSpan) {
@@ -324,6 +331,7 @@ void TilesetEditor::initTileSelector() {
     });
     connect(this->tileSelector, &TilesetEditorTileSelector::hoveredTileCleared, this, &TilesetEditor::onHoveredTileCleared);
     connect(this->tileSelector, &TilesetEditorTileSelector::selectedTilesChanged, this, &TilesetEditor::drawSelectedTiles);
+    connect(this->tileSelector, &TilesetEditorTileSelector::selectedTilesChanged, this, &TilesetEditor::refreshPixelEditor);
 
     this->tileSelector->showDivider = this->ui->actionShow_Tileset_Divider->isChecked();
 
@@ -432,6 +440,8 @@ void TilesetEditor::refresh() {
     this->redrawTileSelector();
     this->redrawMetatileSelector();
     this->drawSelectedTiles();
+    refreshTileInfo();
+    refreshPixelEditor();
 }
 
 void TilesetEditor::drawSelectedTiles() {
@@ -502,6 +512,7 @@ void TilesetEditor::onSelectedMetatileChanged(uint16_t metatileId) {
     this->ui->lineEdit_MetatileLabel->setPlaceholderText(labels.shared);
 
     refreshMetatileAttributes();
+    refreshTileInfo();
 }
 
 void TilesetEditor::queueMetatileReload(uint16_t metatileId) {
@@ -525,6 +536,251 @@ void TilesetEditor::showTileStatus(const Tile &tile) {
 
 void TilesetEditor::showTileStatus(uint16_t tileId) {
     this->ui->statusbar->showMessage(QString("Tile: %1").arg(Util::toHexString(tileId, 3)));
+}
+
+// Show where each tile in the selected metatile comes from: which tileset owns it,
+// which tiles image file it lives in, and which palette file its palette comes from.
+// Paths are shown relative to the project root; the tooltip holds the absolute paths.
+void TilesetEditor::refreshTileInfo() {
+    if (!this->metatile) {
+        this->ui->plainTextEdit_TileInfo->clear();
+        this->ui->plainTextEdit_TileInfo->setToolTip(QString());
+        return;
+    }
+
+    const QDir projectRoot(this->project ? this->project->root : QString());
+    auto relativePath = [&projectRoot](const QString &path) {
+        return path.isEmpty() ? QStringLiteral("(none)") : projectRoot.relativeFilePath(path);
+    };
+
+    QStringList lines;
+    QStringList absoluteLines;
+    lines.append(QString("Metatile %1").arg(Metatile::getMetatileIdString(getSelectedMetatileId())));
+
+    const int numTiles = this->metatile->tiles.length();
+    for (int i = 0; i < numTiles; i++) {
+        const Tile &tile = this->metatile->tiles.at(i);
+        const int layer = i / 4;
+        const int inLayer = i % 4;
+        const int x = inLayer % 2;
+        const int y = inLayer / 2;
+
+        lines.append(QString("#%1 L%2 (%3,%4): Tile %5 (local %6), Palette %7%8%9")
+                        .arg(i).arg(layer).arg(x).arg(y)
+                        .arg(Util::toHexString(tile.tileId, 3))
+                        .arg(Tile::getIndexInTileset(tile.tileId))
+                        .arg(tile.palette)
+                        .arg(tile.xflip ? QStringLiteral(", X-flip") : QString())
+                        .arg(tile.yflip ? QStringLiteral(", Y-flip") : QString()));
+
+        Tileset *owner = Tileset::getTileTileset(tile.tileId, this->primaryTileset, this->secondaryTileset);
+        if (!owner) {
+            lines.append(QStringLiteral("    (no tileset owns this tile)"));
+            continue;
+        }
+        const QString palettePath = owner->palettePaths.value(tile.palette);
+        lines.append(QString("    %1 tileset \"%2\"")
+                        .arg(owner->is_secondary ? QStringLiteral("Secondary") : QStringLiteral("Primary"))
+                        .arg(owner->name));
+        lines.append(QString("    Tiles: %1 - %2")
+                        .arg(QFileInfo(owner->tilesImagePath).fileName())
+                        .arg(relativePath(owner->tilesImagePath)));
+        lines.append(QString("    Pal: %1 - %2")
+                        .arg(QFileInfo(palettePath).fileName())
+                        .arg(relativePath(palettePath)));
+        absoluteLines.append(QString("Tile %1: %2 | palette %3: %4")
+                        .arg(Util::toHexString(tile.tileId, 3))
+                        .arg(owner->tilesImagePath)
+                        .arg(tile.palette)
+                        .arg(palettePath));
+    }
+
+    this->ui->plainTextEdit_TileInfo->setPlainText(lines.join("\n"));
+    this->ui->plainTextEdit_TileInfo->setToolTip(absoluteLines.join("\n"));
+}
+
+void TilesetEditor::initPixelEditor() {
+    this->ui->plainTextEdit_TileInfo->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+
+    // No QObject parent: the scene owns this item, like the other selector items in this editor.
+    this->pixelEditorItem = new TilePixelEditorItem();
+    auto scene = new QGraphicsScene(this);
+    scene->addItem(this->pixelEditorItem);
+    this->ui->graphicsView_PixelEditor->setScene(scene);
+    this->ui->graphicsView_PixelEditor->setSceneRect(0, 0, TilePixelEditorItem::cellSize * TilePixelEditorItem::pixelCount, TilePixelEditorItem::cellSize * TilePixelEditorItem::pixelCount);
+
+    connect(this->pixelEditorItem, &TilePixelEditorItem::paintPixel, this, &TilesetEditor::paintPixelAt);
+    connect(this->pixelEditorItem, &TilePixelEditorItem::eyedropPixel, this, &TilesetEditor::eyedropPixelAt);
+    connect(this->pixelEditorItem, &TilePixelEditorItem::strokeFinished, this, &TilesetEditor::finishPixelStroke);
+
+    // One swatch per color index in the current palette (2 rows of 8).
+    for (int i = 0; i < Tileset::numColorsPerPalette(); i++) {
+        auto button = new QToolButton(this->ui->frame_PixelPalette);
+        button->setCheckable(true);
+        button->setFixedSize(24, 24);
+        button->setText(QString::number(i));
+        connect(button, &QToolButton::clicked, this, [this, i] { setPixelColorIndex(i); });
+        this->ui->gridLayout_PixelPalette->addWidget(button, i / 8, i % 8);
+        this->pixelPaletteButtons.append(button);
+    }
+    setPixelColorIndex(1);
+    refreshPixelEditor();
+}
+
+// The pixel editor edits whichever single tile is currently selected in the tile selector
+// (a 1x1 selection; this includes tiles picked from the metatile's layers view).
+void TilesetEditor::refreshPixelEditor() {
+    if (!this->pixelEditorItem)
+        return;
+
+    QList<Tile> tiles = this->tileSelector ? this->tileSelector->getSelectedTiles() : QList<Tile>();
+    QSize dimensions = this->tileSelector ? this->tileSelector->getSelectionDimensions() : QSize();
+    if (tiles.length() != 1 || dimensions != QSize(1, 1)) {
+        this->hasPixelEditTile = false;
+        this->pixelEditorItem->clearTile();
+        this->ui->graphicsView_PixelEditor->setEnabled(false);
+        for (auto button : this->pixelPaletteButtons)
+            button->setEnabled(false);
+        return;
+    }
+
+    this->hasPixelEditTile = true;
+    this->pixelEditTileId = tiles.first().tileId;
+    this->ui->graphicsView_PixelEditor->setEnabled(true);
+    for (auto button : this->pixelPaletteButtons)
+        button->setEnabled(true);
+    refreshPixelPaletteSwatches();
+    refreshPixelEditorDisplay();
+}
+
+void TilesetEditor::refreshPixelEditorDisplay() {
+    if (!this->pixelEditorItem || !this->hasPixelEditTile)
+        return;
+
+    Tileset *owner = Tileset::getTileTileset(this->pixelEditTileId, this->primaryTileset, this->secondaryTileset);
+    if (!owner)
+        return;
+    QImage indexedTile = owner->tileImage(this->pixelEditTileId);
+    if (indexedTile.isNull())
+        return;
+
+    const QList<QRgb> palette = Tileset::getPalette(paletteId(), this->primaryTileset, this->secondaryTileset, true);
+    QImage display(Tile::pixelWidth(), Tile::pixelHeight(), QImage::Format_RGBA8888);
+    for (int y = 0; y < Tile::pixelHeight(); y++) {
+        for (int x = 0; x < Tile::pixelWidth(); x++) {
+            const int colorIndex = indexedTile.pixelIndex(x, y);
+            if (colorIndex == 0) {
+                // Index 0 is transparent; show a checkerboard so it's distinguishable from a real color.
+                display.setPixelColor(x, y, ((x + y) % 2 == 0) ? QColor(255, 255, 255) : QColor(192, 192, 192));
+            } else {
+                display.setPixelColor(x, y, QColor(palette.value(colorIndex)));
+            }
+        }
+    }
+    this->pixelEditorItem->setTileDisplayImage(display);
+}
+
+void TilesetEditor::refreshPixelPaletteSwatches() {
+    const QList<QRgb> palette = Tileset::getPalette(paletteId(), this->primaryTileset, this->secondaryTileset, true);
+    for (int i = 0; i < this->pixelPaletteButtons.length(); i++) {
+        auto button = this->pixelPaletteButtons.at(i);
+        const QRgb rgb = palette.value(i);
+        button->setStyleSheet(QString("background-color: rgb(%1, %2, %3);").arg(qRed(rgb)).arg(qGreen(rgb)).arg(qBlue(rgb)));
+        button->setToolTip(i == 0 ? QStringLiteral("Index 0 (transparent)")
+                                  : QString("Index %1 (#%2)").arg(i).arg(QString::number(rgb & 0xffffff, 16).rightJustified(6, '0').toUpper()));
+        button->setChecked(i == this->pixelColorIndex);
+    }
+}
+
+void TilesetEditor::setPixelColorIndex(int colorIndex) {
+    this->pixelColorIndex = qBound(0, colorIndex, Tileset::numColorsPerPalette() - 1);
+    for (int i = 0; i < this->pixelPaletteButtons.length(); i++)
+        this->pixelPaletteButtons.at(i)->setChecked(i == this->pixelColorIndex);
+}
+
+void TilesetEditor::paintPixelAt(const QPoint &pixelPos) {
+    if (!this->hasPixelEditTile)
+        return;
+    Tileset *owner = Tileset::getTileTileset(this->pixelEditTileId, this->primaryTileset, this->secondaryTileset);
+    if (!owner)
+        return;
+
+    if (!this->pixelStrokeActive) {
+        // Snapshot the tile at the start of the stroke so the whole stroke is one undo step.
+        this->pixelStrokeActive = true;
+        this->pixelStrokeTileId = this->pixelEditTileId;
+        this->pixelStrokePrevTile = owner->tileImage(this->pixelEditTileId);
+    }
+
+    if (!owner->setTilePixel(this->pixelEditTileId, pixelPos, this->pixelColorIndex))
+        return;
+
+    this->hasUnsavedChanges = true;
+    refreshPixelEditorDisplay();
+    this->tileSelector->draw();
+    this->metatileSelector->drawSelectedMetatile();
+    this->metatileLayersItem->draw();
+    drawSelectedTiles();
+}
+
+void TilesetEditor::eyedropPixelAt(const QPoint &pixelPos) {
+    if (!this->hasPixelEditTile)
+        return;
+    Tileset *owner = Tileset::getTileTileset(this->pixelEditTileId, this->primaryTileset, this->secondaryTileset);
+    if (!owner)
+        return;
+    QImage tile = owner->tileImage(this->pixelEditTileId);
+    if (tile.isNull())
+        return;
+    setPixelColorIndex(tile.pixelIndex(pixelPos));
+}
+
+void TilesetEditor::finishPixelStroke() {
+    if (!this->pixelStrokeActive)
+        return;
+    this->pixelStrokeActive = false;
+
+    Tileset *owner = Tileset::getTileTileset(this->pixelStrokeTileId, this->primaryTileset, this->secondaryTileset);
+    if (!owner)
+        return;
+    QImage newTile = owner->tileImage(this->pixelStrokeTileId);
+    if (newTile == this->pixelStrokePrevTile)
+        return; // Nothing actually changed during this stroke
+
+    this->pixelHistory.push(new PixelEditHistoryItem(this->pixelStrokeTileId, this->pixelStrokePrevTile, newTile));
+    this->editUndoOrder.append(1);
+    this->editRedoOrder.clear();
+    updateEditHistoryActions();
+    this->hasUnsavedChanges = true;
+}
+
+void TilesetEditor::applyPixelTileImage(uint16_t tileId, const QImage &tileImage) {
+    Tileset *owner = Tileset::getTileTileset(tileId, this->primaryTileset, this->secondaryTileset);
+    if (!owner)
+        return;
+    if (!owner->setTileImage(tileId, tileImage))
+        return;
+
+    this->hasUnsavedChanges = true;
+    if (this->hasPixelEditTile && this->pixelEditTileId == tileId)
+        refreshPixelEditorDisplay();
+    this->tileSelector->draw();
+    this->metatileSelector->drawSelectedMetatile();
+    this->metatileLayersItem->draw();
+    drawSelectedTiles();
+}
+
+void TilesetEditor::undoPixelEdit() {
+    PixelEditHistoryItem *item = this->pixelHistory.current();
+    if (!item) return;
+    this->pixelHistory.back();
+    applyPixelTileImage(item->tileId, item->prevTile);
+}
+
+void TilesetEditor::redoPixelEdit() {
+    PixelEditHistoryItem *item = this->pixelHistory.next();
+    if (!item) return;
+    applyPixelTileImage(item->tileId, item->newTile);
 }
 
 void TilesetEditor::onHoveredTileCleared() {
@@ -573,6 +829,7 @@ void TilesetEditor::paintSelectedLayerTiles(const QPoint &pos, bool paletteOnly)
     updateLayerTileStatus();
     this->tileSelector->draw();
     this->commitMetatileChange(prevMetatile);
+    refreshTileInfo();
 }
 
 void TilesetEditor::onMetatileLayerSelectionChanged(const QPoint &selectionOrigin, const QSize &size) {
@@ -603,6 +860,8 @@ int TilesetEditor::paletteId() const {
 void TilesetEditor::refreshPaletteId() {
     this->tileSelector->setPaletteId(paletteId());
     this->drawSelectedTiles();
+    refreshPixelPaletteSwatches();
+    refreshPixelEditorDisplay();
     if (this->paletteEditor) {
         this->paletteEditor->setPaletteId(paletteId());
     }
@@ -962,22 +1221,37 @@ bool TilesetEditor::replaceMetatile(uint16_t metatileId, const Metatile &src, QS
 
 void TilesetEditor::initMetatileHistory() {
     this->metatileHistory.clear();
+    this->pixelHistory.clear();
+    this->editUndoOrder.clear();
+    this->editRedoOrder.clear();
     updateEditHistoryActions();
     this->hasUnsavedChanges = false;
 }
 
 void TilesetEditor::commit(MetatileHistoryItem *item) {
     this->metatileHistory.push(item);
+    this->editUndoOrder.append(0);
+    this->editRedoOrder.clear();
     updateEditHistoryActions();
     this->hasUnsavedChanges = true;
 }
 
 void TilesetEditor::updateEditHistoryActions() {
-    ui->actionUndo->setEnabled(this->metatileHistory.canUndo());
-    ui->actionRedo->setEnabled(this->metatileHistory.canRedo());
+    ui->actionUndo->setEnabled(!this->editUndoOrder.isEmpty());
+    ui->actionRedo->setEnabled(!this->editRedoOrder.isEmpty());
 }
 
 void TilesetEditor::on_actionUndo_triggered() {
+    if (this->editUndoOrder.isEmpty()) return;
+    const int kind = this->editUndoOrder.takeLast();
+    this->editRedoOrder.append(kind);
+
+    if (kind == 1) {
+        undoPixelEdit();
+        updateEditHistoryActions();
+        return;
+    }
+
     MetatileHistoryItem *commit = this->metatileHistory.current();
     if (!commit) return;
     this->metatileHistory.back();
@@ -991,6 +1265,16 @@ void TilesetEditor::on_actionUndo_triggered() {
 }
 
 void TilesetEditor::on_actionRedo_triggered() {
+    if (this->editRedoOrder.isEmpty()) return;
+    const int kind = this->editRedoOrder.takeLast();
+    this->editUndoOrder.append(kind);
+
+    if (kind == 1) {
+        redoPixelEdit();
+        updateEditHistoryActions();
+        return;
+    }
+
     MetatileHistoryItem *commit = this->metatileHistory.next();
     if (!commit) return;
 

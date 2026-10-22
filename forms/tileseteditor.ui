@@ -605,7 +605,28 @@
                 </layout>
                </widget>
               </item>
-             </layout>
+             <item row="6" column="0" colspan="2">
+               <widget class="QFrame" name="frame_TileInfo">
+                <layout class="QVBoxLayout" name="verticalLayout_TileInfo">
+                 <property name="leftMargin"><number>0</number></property>
+                 <property name="topMargin"><number>0</number></property>
+                 <property name="rightMargin"><number>0</number></property>
+                 <property name="bottomMargin"><number>0</number></property>
+                 <item>
+                  <widget class="QLabel" name="label_TileInfo">
+                   <property name="text"><string>Tiles in Metatile</string></property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QPlainTextEdit" name="plainTextEdit_TileInfo">
+                   <property name="readOnly"><bool>true</bool></property>
+                   <property name="maximumSize"><size><width>16777215</width><height>130</height></size></property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              </layout>
             </widget>
            </item>
            <item>
@@ -767,7 +788,38 @@
                 </layout>
                </widget>
               </item>
-             </layout>
+             <item row="5" column="0" colspan="2">
+               <widget class="QLabel" name="label_PixelEditor">
+                <property name="text"><string>Pixel Editor</string></property>
+               </widget>
+              </item>
+              <item row="6" column="0" colspan="2">
+               <widget class="QGraphicsView" name="graphicsView_PixelEditor">
+                <property name="sizePolicy"><sizepolicy hsizetype="Fixed" vsizetype="Fixed"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property>
+                <property name="minimumSize"><size><width>194</width><height>194</height></size></property>
+                <property name="maximumSize"><size><width>194</width><height>194</height></size></property>
+                <property name="verticalScrollBarPolicy"><enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum></property>
+                <property name="horizontalScrollBarPolicy"><enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum></property>
+               </widget>
+              </item>
+              <item row="7" column="0" colspan="2">
+               <widget class="QFrame" name="frame_PixelPalette">
+                <property name="frameShape"><enum>QFrame::Shape::NoFrame</enum></property>
+                <layout class="QGridLayout" name="gridLayout_PixelPalette">
+                 <property name="leftMargin"><number>0</number></property>
+                 <property name="topMargin"><number>0</number></property>
+                 <property name="rightMargin"><number>0</number></property>
+                 <property name="bottomMargin"><number>0</number></property>
+                </layout>
+               </widget>
+              </item>
+              <item row="8" column="0" colspan="2">
+               <widget class="QLabel" name="label_PixelEditorNote">
+                <property name="text"><string>Paints the original tile (flips ignored); every metatile using it changes. Index 0 is transparent. Alt/Right-click picks a color index.</string></property>
+                <property name="wordWrap"><bool>true</bool></property>
+               </widget>
+              </item>
+              </layout>
             </widget>
            </item>
           </layout>

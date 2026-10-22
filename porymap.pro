@@ -133,6 +133,7 @@ SOURCES += src/core/advancemapparser.cpp \
     src/ui/tileseteditor.cpp \
     src/ui/tileseteditormetatileselector.cpp \
     src/ui/tileseteditortileselector.cpp \
+    src/ui/tilepixeleditoritem.cpp \
     src/ui/tilemaptileselector.cpp \
     src/ui/regionmapeditor.cpp \
     src/ui/newmapdialog.cpp \
@@ -254,6 +255,7 @@ HEADERS  += include/core/advancemapparser.h \
     include/ui/tileseteditor.h \
     include/ui/tileseteditormetatileselector.h \
     include/ui/tileseteditortileselector.h \
+    include/ui/tilepixeleditoritem.h \
     include/ui/tilemaptileselector.h \
     include/ui/regionmapeditor.h \
     include/ui/newmapdialog.h \
