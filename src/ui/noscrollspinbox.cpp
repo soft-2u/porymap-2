@@ -13,12 +13,19 @@ NoScrollSpinBox::NoScrollSpinBox(QWidget *parent)
 
 void NoScrollSpinBox::wheelEvent(QWheelEvent *event)
 {
-    // Only allow scrolling to modify contents when it explicitly has focus.
-    if (hasFocus()) {
+    // Only allow scrolling to modify contents when it explicitly has focus,
+    // and only if focused scrolling hasn't been disabled for this spin box.
+    // Ignoring (rather than accepting) the event lets an ancestor QScrollArea still scroll.
+    if (this->focusedScrollingEnabled && hasFocus()) {
         QSpinBox::wheelEvent(event);
     } else {
         event->ignore();
     }
+}
+
+void NoScrollSpinBox::setFocusedScrollingEnabled(bool enabled)
+{
+    this->focusedScrollingEnabled = enabled;
 }
 
 void NoScrollSpinBox::focusOutEvent(QFocusEvent *event) {

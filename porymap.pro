@@ -123,6 +123,7 @@ SOURCES += src/core/advancemapparser.cpp \
     src/ui/newmapgroupdialog.cpp \
     src/ui/noscrollcombobox.cpp \
     src/ui/noscrollspinbox.cpp \
+    src/ui/noscrollslider.cpp \
     src/ui/montabwidget.cpp \
     src/ui/encountertablemodel.cpp \
     src/ui/encountertabledelegates.cpp \
@@ -241,6 +242,7 @@ HEADERS  += include/core/advancemapparser.h \
     include/ui/newmapgroupdialog.h \
     include/ui/noscrollcombobox.h \
     include/ui/noscrollspinbox.h \
+    include/ui/noscrollslider.h \
     include/ui/noscrolltextedit.h \
     include/ui/montabwidget.h \
     include/ui/encountertablemodel.h \

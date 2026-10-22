@@ -13,10 +13,12 @@ public:
     void focusOutEvent(QFocusEvent *event) override;
 
     void setLineEditEnabled(bool enabled);
+    void setFocusedScrollingEnabled(bool enabled);
 
     unsigned getActionId();
 
 private:
+    bool focusedScrollingEnabled = true;
 };
 
 #endif // NOSCROLLSPINBOX_H

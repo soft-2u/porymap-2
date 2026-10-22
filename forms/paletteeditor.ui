@@ -32,7 +32,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QSpinBox" name="spinBox_PaletteId">
+        <widget class="NoScrollSpinBox" name="spinBox_PaletteId">
          <property name="focusPolicy">
           <enum>Qt::FocusPolicy::StrongFocus</enum>
          </property>
@@ -219,6 +219,13 @@
    </property>
   </action>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>NoScrollSpinBox</class>
+   <extends>QSpinBox</extends>
+   <header>noscrollspinbox.h</header>
+  </customwidget>
+ </customwidgets>
  <resources>
   <include location="../resources/images.qrc"/>
  </resources>
