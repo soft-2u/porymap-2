@@ -1,0 +1,68 @@
+name: Build Porymap (Windows test build)
+
+# Windows test build for the muse/porymap-fixes branch so Ly can download a
+# ready-to-run porymap.exe without setting up a local Qt/MinGW toolchain.
+# (The upstream static Windows job in main.yml is disabled upstream.)
+on:
+  push:
+    branches:
+    - muse/porymap-fixes
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt (MinGW)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.*'
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_mingw'
+          modules: 'qtcharts'
+          tools: 'tools_mingw1310'
+          cache: 'true'
+
+      - name: Add Qt and MinGW to PATH
+        shell: powershell
+        run: |
+          $qtRoot = Join-Path $env:GITHUB_WORKSPACE '..\Qt'
+          $qmake = Get-ChildItem -Path $qtRoot -Recurse -Filter qmake.exe | Select-Object -First 1
+          if (-not $qmake) { Write-Error 'qmake.exe not found under Qt install'; exit 1 }
+          echo $qmake.DirectoryName | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
+          $make = Get-ChildItem -Path $qtRoot -Recurse -Filter mingw32-make.exe | Select-Object -First 1
+          if (-not $make) { Write-Error 'mingw32-make.exe not found under Qt install'; exit 1 }
+          echo $make.DirectoryName | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
+          echo "QMAKE_DIR=$($qmake.DirectoryName)" | Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8
+          echo "MINGW_DIR=$($make.DirectoryName)" | Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8
+
+      - name: Configure
+        shell: powershell
+        run: qmake porymap.pro CONFIG+=release
+
+      - name: Compile
+        shell: powershell
+        run: mingw32-make -j8
+
+      - name: Package (exe + Qt/MinGW DLLs)
+        shell: powershell
+        run: |
+          if (-not (Test-Path 'release\porymap.exe')) { Write-Error 'release\porymap.exe missing after build'; exit 1 }
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item release\porymap.exe dist\
+          & (Join-Path $env:QMAKE_DIR 'windeployqt.exe') dist\porymap.exe
+          foreach ($dll in 'libgcc_s_seh-1.dll','libstdc++-6.dll','libwinpthread-1.dll') {
+            Copy-Item (Join-Path $env:MINGW_DIR $dll) dist\
+          }
+          Copy-Item RELEASE-README.txt dist\README.txt
+          Compress-Archive -Path dist\* -DestinationPath porymap-windows-test.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: porymap-windows-test
+          path: porymap-windows-test.zip
+          retention-days: 14
